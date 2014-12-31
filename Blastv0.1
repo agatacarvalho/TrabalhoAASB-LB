@@ -1,0 +1,48 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Dec 31 02:44:20 2014
+
+@author: Jorge
+"""
+"""
+Esta é uma versão beta de tentativa de automatização do Blast a partir de diversas sequências incluídas
+no mesmo ficheiro fasta, mas após duas ou tres tentativas, o qblast() deixa de responder devidamente
+"""
+from Bio.Blast import NCBIXML
+from Bio.Blast import NCBIWWW
+from Bio import SeqIO
+import os.path
+
+class Blast():
+	"""docstring for Blast"""
+	def __init__(self, filename,tipo):
+		self.records =list(SeqIO.parse(filename,tipo))
+
+	def next_it(self):
+		a=next(self.records)	
+		return a
+		
+	def __str__(self):
+		return str(self.records)
+	
+	def a(self):
+		for i in xrange(len(self.records)):
+			if os.path.exists('F://Dropbox//Trabalho AASB_LB//Jorge//'+str(self.records[i].id)+".xml"):
+				print "Ja existe"
+			else:
+				nrecord=self.records[i].seq
+				print "a"
+				result_handle=NCBIWWW.qblast("blastp","swissprot",nrecord)
+				print "b"
+				save_file=open(str(self.records[i].id)+".xml","w")
+				print "c"
+				save_file.write(result_handle.read())
+				print "d"
+				save_file.close()
+				print "e"
+				print str(self.records[i].id)+" done"
+				result_handle.close()
+				print "f"
+
+a=Blast("teste.faa","fasta")
+a.a()
