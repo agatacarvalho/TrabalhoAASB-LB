@@ -1,0 +1,35 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Dec 24 15:27:51 2014
+
+@author: Jorge
+"""
+
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio.Alphabet import generic_protein
+
+class Proteins():
+	def __init__(self,record):
+		self.sequence=record
+		
+	
+	def seq_proteins(self):
+		proteins = []
+		features=self.sequence.features
+		for i in xrange(len(features)):
+			if features[i].type=="CDS":
+				proteins.append(i)
+		nproteins=[]
+		for k in proteins:
+			a=features[k].qualifiers.get('translation')
+			b=features[k].qualifiers.get('protein_id')
+			rec=SeqRecord(Seq(str(a).strip("[']"),generic_protein),id=(str(b).strip("[']")),description="")
+			nproteins.append(rec)
+		SeqIO.write(nproteins,"teste.faa","fasta")
+			
+			
+record=SeqIO.read("sequence.gb","genbank",alphabet=IUPAC.ambiguous_dna)			
+a=Proteins(record)
+a.seq_proteins()
