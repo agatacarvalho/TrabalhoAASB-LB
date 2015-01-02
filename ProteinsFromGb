@@ -3,17 +3,27 @@
 Created on Wed Dec 24 15:27:51 2014
 
 @author: Jorge
+
+nova versão
 """
 
 from Bio import SeqIO
 from Bio.Seq import Seq
+from Bio import Entrez
 from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import generic_protein
 from Bio.Alphabet import IUPAC
+import os
 
 class Proteins():
-	def __init__(self,record):
+	def __init__(self,record,path):
 		self.sequence=record
+		self.path=path
+		
+	def path_id_proteins(self):
+		self.ppath=self.path+'//id_proteins'
+		if not os.path.exists(self.ppath):
+			os.makedirs(self.ppath)
 		
 	
 	def seq_proteins(self):
@@ -29,8 +39,38 @@ class Proteins():
 			rec=SeqRecord(Seq(str(a).strip("[']"),generic_protein),id=(str(b).strip("[']")),description="")
 			nproteins.append(rec)
 		SeqIO.write(nproteins,"teste.faa","fasta")
+		
+	def id_proteins(self):
+		self.path_id_proteins()
+		proteins = []
+		features=self.sequence.features
+		for i in xrange(len(features)):
+			if features[i].type=="CDS":
+				proteins.append(i)
+		os.chdir(self.ppath)
+		f=open("id_proteins.faa","w")
+		for k in proteins:
+			b=features[k].qualifiers.get('protein_id')
+			b=str(b).strip("[']")
+			f.write(b+"\n")
+		f.close()
+		os.chdir(self.path)
+		
+	def create_singleID_proteins(self):
+		self.path_id_proteins()
+		os.chdir(self.ppath)
+		f=open("id_proteins.faa","r")
+		for i in f:
+			net_handle=Entrez.efetch(db="nucleotide",id=str(i),rettype="gb")
+			save_handle=open(str(i).strip("\n")+".gb","w")
+			save_handle.write(net_handle.read())
+			save_handle.close()
+			net_handle.close()
 			
 			
-record=SeqIO.read("sequence.gb","genbank",alphabet=IUPAC.ambiguous_dna)			
-a=Proteins(record)
-a.seq_proteins()
+record=SeqIO.read("sequence.gb","genbank",alphabet=IUPAC.ambiguous_dna)	
+path='F://Dropbox//Trabalho AASB_LB//Jorge//'
+a=Proteins(record,path)
+a.id_proteins()
+a.create_singleID_proteins()
+
