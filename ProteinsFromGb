@@ -2,9 +2,7 @@
 """
 Created on Wed Dec 24 15:27:51 2014
 
-@author: Jorge
-
-nova versão
+@author: Grupo 7
 """
 
 from Bio import SeqIO
@@ -14,6 +12,10 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import generic_protein
 from Bio.Alphabet import IUPAC
 import os
+#from Bio import KEGG
+#from Bio.KEGG import Enzyme
+import urllib2
+import urllib
 
 class Proteins():
 	def __init__(self,record,path):
@@ -24,8 +26,27 @@ class Proteins():
 		self.ppath=self.path+'//id_proteins'
 		if not os.path.exists(self.ppath):
 			os.makedirs(self.ppath)
-		
+
+	def path_lt_proteins(self):
+		self.ltpath=self.path+'//locus_tag_UniProt'
+		if not os.path.exists(self.ltpath):
+			os.makedirs(self.ltpath)
 	
+	def path_unreviewed(self):
+		self.upath=self.path+'//locus_tag_UniProt//unreviewed'
+		if not os.path.exists(self.upath):
+			os.makedirs(self.upath)
+	
+	def path_reviewed(self):
+		self.rpath=self.path+'//locus_tag_UniProt//reviewed'
+		if not os.path.exists(self.rpath):
+			os.makedirs(self.rpath)
+			
+	def path_NA(self):
+		self.napath=self.path+'//locus_tag_UniProt//NA'
+		if not os.path.exists(self.napath):
+			os.makedirs(self.napath)
+			               
 	def seq_proteins(self):
 		proteins = []
 		features=self.sequence.features
@@ -38,7 +59,7 @@ class Proteins():
 			b=features[k].qualifiers.get('protein_id')
 			rec=SeqRecord(Seq(str(a).strip("[']"),generic_protein),id=(str(b).strip("[']")),description="")
 			nproteins.append(rec)
-		SeqIO.write(nproteins,"teste.faa","fasta")
+		SeqIO.write(nproteins,"id_proteins.faa","fasta")
 		
 	def id_proteins(self):
 		self.path_id_proteins()
@@ -57,6 +78,7 @@ class Proteins():
 		os.chdir(self.path)
 		
 	def create_singleID_proteins(self):
+		Entrez.email='jhmdf@hotmail.com'
 		self.path_id_proteins()
 		os.chdir(self.ppath)
 		f=open("id_proteins.faa","r")
@@ -66,11 +88,105 @@ class Proteins():
 			save_handle.write(net_handle.read())
 			save_handle.close()
 			net_handle.close()
+		f.close()
+
+	def lt_proteins(self):
+		self.path_lt_proteins()
+		proteins = []
+		features=self.sequence.features
+		for i in xrange(len(features)):
+			if features[i].type=="CDS":
+				proteins.append(i)
+		os.chdir(self.ltpath)
+		f=open("locus_tag.faa","w")
+		for k in proteins:
+			b=features[k].qualifiers.get('locus_tag')
+			b=str(b).strip("[']")
+			f.write(b+"\n")
+		f.close()
+		
+		
+	#adaptado do grupo 3
+	#Vai buscar os ids das proteinas ao Uniprot - parte do codigo baseado no codigo do grupo 5
+	def uniprot_ID(self):
+		self.path_lt_proteins()
+		f=open("locus_tag.faa","r")
+		listaIDs = []
+		counter=1
+		for i in f:
+			handler = urllib.urlopen("http://www.uniprot.org/uniprot/?query="+str(i)+"&sort=score")
+			print counter
+			data = str(handler.read())
+			try:
+				start = data.index('<tbody>')
+			except ValueError:
+				start = len(data)
+			if start != len(data):
+				ids = data[start+15:start+21]
+				listaIDs.append(ids)
+			counter+=1
+		f.close()
+		fn=open("uniprotIDs.txt","w")
+		for k in listaIDs:
+			fn.write(k+"\n")
+		fn.close()
+		
+	#adaptado do grupo 3
+	#Pesquisa determinada proteina no uniprot e devolde informaçao
+	def uniprot_xml(self):
+		self.path_lt_proteins()
+		f=open("uniprotIDs.txt","r")
+		counter=1
+		for i in f:
+			if self.uniprot_Info_path(str(i).strip("\n")) == False:
+				os.chdir(self.upath)
+			elif self.uniprot_Info_path(str(i).strip("\n")) == True:
+				os.chdir(self.rpath)
+			else:
+				os.chdir(self.napath)
+			url = 'http://www.uniprot.org/uniprot/' + str(i).strip("\n") + '.xml'
+			data = urllib2.urlopen(url).read()
+			#records = UniprotIO.UniprotIterator(data)
+			
+			save_handle=open(str(i).strip("\n")+".xml","w")
+			save_handle.write(data)
+			save_handle.close()
+			#net_handle.close()
+			os.chdir(self.ltpath)
+			print counter
+			counter+=1
+		f.close()
+		
+	#adaptado do grupo 3
+	#Devolve lista das proteinas reviewed e lista das unreviewed
+	#Este codigo verifica se as proteinas estao ou nao reviewed, e coloca as numa pasta em separado		
+	def uniprot_Info_path(self,ids):
+		tag = 'reviewed'
+		s, e = '>', '<'
+		url = 'http://www.uniprot.org/uniprot/' + str(ids) + '.rdf' 
+		data = urllib2.urlopen(url).read()
+		try:
+			start = data.index(tag)
+			start = start + data[start:].index(s) + 1
+			end = start + data[start:].index(e)
+			value = data[start:end].lower()
+			value = data[start:end]
+			if value == 'false':
+				self.path_unreviewed()
+				return False
+			else:
+				self.path_reviewed()
+				return True
+		except ValueError:
+			self.path_NA()
+			return
+
 			
 			
 record=SeqIO.read("sequence.gb","genbank",alphabet=IUPAC.ambiguous_dna)	
 path='F://Dropbox//Trabalho AASB_LB//Jorge//'
 a=Proteins(record,path)
-a.id_proteins()
-a.create_singleID_proteins()
-
+#a.id_proteins()
+#a.create_singleID_proteins()
+a.lt_proteins()
+a.uniprot_xml()
